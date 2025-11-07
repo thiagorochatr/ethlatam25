@@ -60,3 +60,7 @@ app/lib/circuits/
 # Deployment
 .vercel/
 .netlify/
+
+# Local temp
+llms/
+checkpoints/

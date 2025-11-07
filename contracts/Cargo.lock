@@ -4225,7 +4225,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "stylus-zk"
+name = "stylus-zk-mint"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",

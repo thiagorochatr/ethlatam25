@@ -1,5 +1,5 @@
 [package]
-name = "stylus-zk"
+name = "stylus-zk-mint"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -28,7 +28,7 @@ export-abi = ["stylus-sdk/export-abi"]
 debug = ["stylus-sdk/debug"]
 
 [[bin]]
-name = "stylus-zk"
+name = "stylus-zk-mint"
 path = "src/main.rs"
 
 [lib]
