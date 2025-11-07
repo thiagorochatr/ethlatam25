@@ -70,6 +70,12 @@ importers:
       '@fhevm/solidity':
         specifier: ^0.8.0
         version: 0.8.0
+      '@openzeppelin/confidential-contracts':
+        specifier: ^0.2.0
+        version: 0.2.0(@fhevm/solidity@0.8.0)(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)
+      '@openzeppelin/contracts':
+        specifier: ^5.4.0
+        version: 5.4.0
       '@zama-fhe/oracle-solidity':
         specifier: ^0.1.0
         version: 0.1.0(@openzeppelin/contracts@5.4.0)
@@ -1427,6 +1433,13 @@ packages:
     resolution: {integrity: sha512-eUWNbyYwKPbH+Ca98eI2OBZ6IioWM1aJ6SGp9TrVGRu2qNeDtG/qnqemv3v5qcHzPK211CPSvHJBFYef3J9rBg==}
     engines: {node: '>=18.0.0'}
 
+  '@openzeppelin/confidential-contracts@0.2.0':
+    resolution: {integrity: sha512-IU4k9+59CDy3MrYWQAJeSMo3MrIgJhDzHeWe7DIGZwf/+PR63GCdn9cbXVt/76uXRTpijZ7dBu8RP+JEg++slQ==}
+    peerDependencies:
+      '@fhevm/solidity': 0.7.0
+      '@openzeppelin/contracts': ^5.3.0
+      '@openzeppelin/contracts-upgradeable': ^5.3.0
+
   '@openzeppelin/contracts-upgradeable@5.4.0':
     resolution: {integrity: sha512-STJKyDzUcYuB35Zub1JpWW58JxvrFFVgQ+Ykdr8A9PGXgtq/obF5uoh07k2XmFyPxfnZdPdBdhkJ/n2YxJ87HQ==}
     peerDependencies:
@@ -2278,6 +2291,7 @@ packages:
 
   '@walletconnect/ethereum-provider@2.21.1':
     resolution: {integrity: sha512-SSlIG6QEVxClgl1s0LMk4xr2wg4eT3Zn/Hb81IocyqNSGfXpjtawWxKxiC5/9Z95f1INyBD6MctJbL/R1oBwIw==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/events@1.0.1':
     resolution: {integrity: sha512-NPTqaoi0oPBVNuLv7qPaJazmGHs5JGyO8eEAk5VGKmJzDR7AHzD4k6ilox5kxk1iwiOnFopBOOMLs86Oa76HpQ==}
@@ -2322,9 +2336,11 @@ packages:
 
   '@walletconnect/sign-client@2.21.0':
     resolution: {integrity: sha512-z7h+PeLa5Au2R591d/8ZlziE0stJvdzP9jNFzFolf2RG/OiXulgFKum8PrIyXy+Rg2q95U9nRVUF9fWcn78yBA==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/sign-client@2.21.1':
     resolution: {integrity: sha512-QaXzmPsMnKGV6tc4UcdnQVNOz4zyXgarvdIQibJ4L3EmLat73r5ZVl4c0cCOcoaV7rgM9Wbphgu5E/7jNcd3Zg==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/time@1.0.2':
     resolution: {integrity: sha512-uzdd9woDcJ1AaBZRhqy5rNC9laqWGErfc4dxA9a87mPdKOgWMD85mcFo9dIYIts/Jwocfwn07EC6EzclKubk/g==}
@@ -2337,9 +2353,11 @@ packages:
 
   '@walletconnect/universal-provider@2.21.0':
     resolution: {integrity: sha512-mtUQvewt+X0VBQay/xOJBvxsB3Xsm1lTwFjZ6WUwSOTR1X+FNb71hSApnV5kbsdDIpYPXeQUbGt2se1n5E5UBg==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/universal-provider@2.21.1':
     resolution: {integrity: sha512-Wjx9G8gUHVMnYfxtasC9poGm8QMiPCpXpbbLFT+iPoQskDDly8BwueWnqKs4Mx2SdIAWAwuXeZ5ojk5qQOxJJg==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/utils@2.21.0':
     resolution: {integrity: sha512-zfHLiUoBrQ8rP57HTPXW7rQMnYxYI4gT9yTACxVW6LhIFROTF6/ytm5SKNoIvi4a5nX5dfXG4D9XwQUCu8Ilig==}
@@ -8865,6 +8883,12 @@ snapshots:
       yarn: 1.22.22
     transitivePeerDependencies:
       - supports-color
+
+  '@openzeppelin/confidential-contracts@0.2.0(@fhevm/solidity@0.8.0)(@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)':
+    dependencies:
+      '@fhevm/solidity': 0.8.0
+      '@openzeppelin/contracts': 5.4.0
+      '@openzeppelin/contracts-upgradeable': 5.4.0(@openzeppelin/contracts@5.4.0)
 
   '@openzeppelin/contracts-upgradeable@5.4.0(@openzeppelin/contracts@5.4.0)':
     dependencies:

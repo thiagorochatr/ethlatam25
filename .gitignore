@@ -62,5 +62,5 @@ app/lib/circuits/
 .netlify/
 
 # Local temp
-llms/
+# llms/
 checkpoints/
