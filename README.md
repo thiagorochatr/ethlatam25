@@ -1,4 +1,4 @@
-# Torresm - Cross-Chain Confidential Vesting System
+# FHEVesting - Cross-Chain Confidential Vesting System
 
 ## Smart Contracts
 ZK Verifier (arb): 0xd8b7f70c959609091494ce7096b6c8397181a22d
