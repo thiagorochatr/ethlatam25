@@ -26,7 +26,7 @@ task("task:getCount")
     const { contract } = taskArguments;
 
     const FHECounterFactory = await ethers.getContractFactory("FHECounter");
-    const fheCounter = FHECounterFactory.attach(contract);
+    const fheCounter = FHECounterFactory.attach(contract) as any;
 
     const count = await fheCounter.getCount();
     console.log(`Current encrypted count: ${count}`);
@@ -35,4 +35,5 @@ task("task:getCount")
   });
 
 export {};
+
 

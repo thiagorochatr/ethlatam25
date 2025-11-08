@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     waitConfirmations: hre.network.name === "sepolia" ? 6 : 1,
   });
-
+  
   console.log("\n✅ CustomVestingFactory deployed!");
   console.log("   Address:", factory.address);
   console.log("   Network:", hre.network.name);
