@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useFhevm } from "@fhevm-sdk";
 import { useAccount } from "wagmi";
+import { ethers } from "ethers";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
 import { useVestingWallet } from "~~/hooks/vesting/useVestingWallet";
 import { useCustomVestingFactory } from "~~/hooks/vesting/useCustomVestingFactory";
@@ -71,17 +72,35 @@ export default function BeneficiaryPanel() {
       return;
     }
 
+    if (!startTimestamp || startTimestamp === 0) {
+      alert("⚠️ IMPORTANT: You must enter the EXACT startTimestamp used during creation!\n\n" +
+            "Check the creation transaction logs on Etherscan:\n" +
+            "1. Go to the transaction\n" +
+            "2. Click 'Logs' tab\n" +
+            "3. Find 'IndividualVestingCreated' event\n" +
+            "4. Copy the startTimestamp value");
+      return;
+    }
+
     try {
+      console.log("🔍 Looking for wallet with parameters:");
+      console.log("   Beneficiary:", userAddress);
+      console.log("   Start Timestamp:", startTimestamp);
+      console.log("   Duration:", durationSeconds);
+      console.log("   Cliff:", cliffSeconds);
+
       const address = await getVestingWalletAddress(
         userAddress,
-        startTimestamp || Math.floor(Date.now() / 1000) - 3600, // Default to 1 hour ago
+        startTimestamp,
         durationSeconds,
         cliffSeconds,
       );
+      
+      console.log("📍 Predicted wallet address:", address);
       setVestingWalletAddress(address);
     } catch (error) {
       console.error("Error finding wallet:", error);
-      alert("Failed to find vesting wallet. Please check the cliff and duration parameters match what the admin set.");
+      alert("Failed to find vesting wallet. Please check all parameters match EXACTLY what the admin used during creation.");
     }
   };
 
@@ -90,12 +109,43 @@ export default function BeneficiaryPanel() {
     await getReleasableAmount(tokenAddress);
   };
 
-  // Claim tokens
+  // Claim tokens - works even without FHE instance
   const handleClaim = async () => {
+    if (!vestingWalletAddress || !tokenAddress) {
+      alert("Please find your vesting wallet first");
+      return;
+    }
+
     try {
-      await releaseTokens(tokenAddress);
-    } catch (error) {
+      // Direct claim without needing FHE instance
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      
+      const walletABI = [
+        "function release(address token) external"
+      ];
+      
+      const wallet = new ethers.Contract(vestingWalletAddress, walletABI, signer);
+      
+      console.log("Releasing tokens from wallet:", vestingWalletAddress);
+      const tx = await wallet.release(tokenAddress);
+      
+      console.log("Release transaction sent:", tx.hash);
+      alert(`⏳ Transaction sent! Hash: ${tx.hash}\n\nWaiting for confirmation...`);
+      
+      const receipt = await tx.wait();
+      
+      console.log("Tokens released! Block:", receipt.blockNumber);
+      alert(`✅ Tokens released successfully!\n\nTransaction: ${tx.hash}`);
+      
+    } catch (error: any) {
       console.error("Failed to release tokens:", error);
+      
+      if (error.message?.includes("cliff")) {
+        alert("❌ Cliff period hasn't passed yet! You need to wait 2 minutes from the start timestamp.");
+      } else {
+        alert(`❌ Failed to claim: ${error.message || "Unknown error"}`);
+      }
     }
   };
 
@@ -224,8 +274,53 @@ export default function BeneficiaryPanel() {
       {/* Find Your Wallet */}
       <div className="bg-white shadow-lg p-6">
         <h3 className="font-bold text-gray-900 text-xl mb-4">🔍 Find Your Vesting Wallet</h3>
+        
+        {/* Important Notice */}
+        <div className="mb-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+          <p className="text-sm font-semibold text-yellow-900 mb-2">
+            ⚠️ IMPORTANT: You need the EXACT parameters from the creation transaction!
+          </p>
+          <p className="text-xs text-yellow-800 mb-2">
+            The vesting wallet address is calculated from these parameters. If ANY parameter is wrong by even 1 second, you'll get the wrong address.
+          </p>
+          <details className="text-xs text-yellow-800">
+            <summary className="cursor-pointer font-medium hover:text-yellow-900">
+              📖 How to get the exact parameters from Etherscan
+            </summary>
+            <ol className="list-decimal list-inside mt-2 ml-2 space-y-1">
+              <li>Go to the creation transaction on Etherscan (get link from admin)</li>
+              <li>Click the <strong>"Logs"</strong> tab</li>
+              <li>Look for the <strong>"IndividualVestingCreated"</strong> event with your address</li>
+              <li>Copy these values:
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li><strong>beneficiary</strong> - Your wallet address</li>
+                  <li><strong>startTimestamp</strong> - Unix timestamp (e.g., 1234567890)</li>
+                  <li><strong>durationSeconds</strong> - Usually 300 (5 min)</li>
+                  <li><strong>cliffSeconds</strong> - Usually 120 (2 min)</li>
+                </ul>
+              </li>
+              <li>Enter these EXACT values below</li>
+            </ol>
+          </details>
+        </div>
+
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">
+                Start Timestamp <span className="text-red-500">* REQUIRED</span>
+              </label>
+              <input
+                type="number"
+                className={inputClass + " text-gray-900 " + (!startTimestamp ? "border-red-500" : "")}
+                value={startTimestamp || ""}
+                onChange={e => setStartTimestamp(parseInt(e.target.value) || 0)}
+                placeholder="e.g., 1234567890 (from Etherscan)"
+              />
+              {!startTimestamp && (
+                <p className="text-xs text-red-500 mt-1">Must get from transaction logs!</p>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cliff (seconds)</label>
               <input
@@ -233,6 +328,7 @@ export default function BeneficiaryPanel() {
                 className={inputClass + " text-gray-900"}
                 value={cliffSeconds}
                 onChange={e => setCliffSeconds(parseInt(e.target.value) || 0)}
+                placeholder="Usually 120"
               />
             </div>
             <div>
@@ -242,16 +338,7 @@ export default function BeneficiaryPanel() {
                 className={inputClass + " text-gray-900"}
                 value={durationSeconds}
                 onChange={e => setDurationSeconds(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Timestamp (optional)</label>
-              <input
-                type="number"
-                className={inputClass + " text-gray-900"}
-                value={startTimestamp || ""}
-                onChange={e => setStartTimestamp(parseInt(e.target.value) || 0)}
-                placeholder="Leave empty for auto"
+                placeholder="Usually 300"
               />
             </div>
           </div>

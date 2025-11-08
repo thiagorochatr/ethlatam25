@@ -31,6 +31,15 @@ export const useVestingWallet = ({ walletAddress, instance }: UseVestingWalletPa
 
     try {
       const wallet = new ethers.Contract(walletAddress, VestingWalletABI, ethersSigner);
+      
+      // First check if contract exists at this address
+      const code = await ethersSigner.provider.getCode(walletAddress);
+      if (code === "0x") {
+        console.error("No contract found at wallet address:", walletAddress);
+        setMessage("❌ No vesting wallet found at this address. Make sure the admin created a schedule for you first!");
+        return;
+      }
+      
       const ownerAddress = await wallet.owner();
       setOwner(ownerAddress);
     } catch (error: any) {
@@ -50,8 +59,17 @@ export const useVestingWallet = ({ walletAddress, instance }: UseVestingWalletPa
 
       try {
         setIsDecrypting(true);
-        setMessage("🔄 Fetching releasable amount...");
+        setMessage("🔄 Checking if vesting wallet exists...");
 
+        // First check if contract exists at this address
+        const code = await ethersSigner.provider.getCode(walletAddress);
+        if (code === "0x") {
+          setMessage("❌ No vesting wallet deployed at this address! The admin needs to create a vesting schedule for you first.");
+          setIsDecrypting(false);
+          return;
+        }
+
+        setMessage("✅ Wallet found! Fetching releasable amount...");
         const wallet = new ethers.Contract(walletAddress, VestingWalletABI, ethersSigner);
 
         // Get encrypted releasable amount
@@ -95,8 +113,17 @@ export const useVestingWallet = ({ walletAddress, instance }: UseVestingWalletPa
 
       try {
         setIsProcessing(true);
-        setMessage("📝 Releasing vested tokens...");
+        setMessage("🔄 Checking vesting wallet...");
 
+        // First check if contract exists at this address
+        const code = await ethersSigner.provider.getCode(walletAddress);
+        if (code === "0x") {
+          setMessage("❌ No vesting wallet deployed at this address! The admin needs to create a vesting schedule for you first.");
+          setIsProcessing(false);
+          return;
+        }
+
+        setMessage("📝 Releasing vested tokens...");
         const wallet = new ethers.Contract(walletAddress, VestingWalletABI, ethersSigner);
 
         const tx = await wallet.release(tokenAddress);

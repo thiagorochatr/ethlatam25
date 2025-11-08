@@ -143,7 +143,23 @@ export const useCustomVestingFactory = ({ factoryAddress, instance }: UseCustomV
 
             const receipt = await tx.wait();
 
-            setMessage(`✅ Successfully created ${schedules.length} vesting wallet(s)!`);
+            // Log created wallet addresses for beneficiaries
+            console.log("✅ Vesting wallets created successfully!");
+            for (let i = 0; i < schedules.length; i++) {
+              const schedule = schedules[i];
+              const walletAddress = await getVestingWalletAddress(
+                schedule.beneficiary,
+                schedule.startTimestamp,
+                schedule.durationSeconds,
+                schedule.cliffSeconds
+              );
+              console.log(`   Beneficiary ${i + 1}: ${schedule.beneficiary}`);
+              console.log(`   Wallet Address: ${walletAddress}`);
+              console.log(`   Amount: ${schedule.amount.toString()} tokens`);
+              console.log("   ---");
+            }
+
+            setMessage(`✅ Successfully created ${schedules.length} vesting wallet(s)! Check console for wallet addresses.`);
             setTxHash(receipt.hash);
             setIsProcessing(false);
 

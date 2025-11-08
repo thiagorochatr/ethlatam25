@@ -492,14 +492,52 @@ export default function AdminPanel() {
           <h3 className="font-bold text-gray-900 text-xl mb-4">💬 Status</h3>
           <p className="text-gray-800 mb-2">{message}</p>
           {txHash && (
-            <a
-              href={`https://sepolia.etherscan.io/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              View on Etherscan →
-            </a>
+            <>
+              <a
+                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline text-sm font-semibold"
+              >
+                📄 View Transaction on Etherscan →
+              </a>
+              
+              {message.includes("Successfully created") && (
+                <div className="mt-4 p-4 bg-green-50 border-2 border-green-300 rounded-lg">
+                  <p className="font-bold text-green-900 mb-2">✅ Vesting Wallets Created!</p>
+                  <p className="text-sm text-green-800 mb-3">
+                    Share these instructions with your beneficiaries:
+                  </p>
+                  <ol className="list-decimal list-inside text-xs text-green-900 space-y-2 bg-white p-3 rounded border border-green-200">
+                    <li className="font-medium">
+                      Go to the transaction on Etherscan: 
+                      <a 
+                        href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-1 text-blue-600 hover:underline break-all"
+                      >
+                        {txHash}
+                      </a>
+                    </li>
+                    <li>Click the <strong>"Logs"</strong> tab</li>
+                    <li>Find the <strong>"IndividualVestingCreated"</strong> event with their address</li>
+                    <li>Copy these values:
+                      <ul className="list-disc list-inside ml-4 mt-1">
+                        <li><strong>beneficiary</strong> - Their wallet address</li>
+                        <li><strong>startTimestamp</strong> - Unix timestamp</li>
+                        <li><strong>durationSeconds</strong> - Vesting duration (e.g., 300)</li>
+                        <li><strong>cliffSeconds</strong> - Cliff period (e.g., 120)</li>
+                      </ul>
+                    </li>
+                    <li>Go to the Beneficiary Portal and enter these EXACT values to find their wallet</li>
+                  </ol>
+                  <p className="text-xs text-green-700 mt-3 font-medium">
+                    💡 Check browser console for wallet addresses logged there too!
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
