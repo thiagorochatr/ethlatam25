@@ -15,8 +15,8 @@ export default function BeneficiaryPanel() {
   const { address: userAddress, isConnected, chain } = useAccount();
   const chainId = chain?.id;
 
-  // Token mode selection
-  const [tokenMode, setTokenMode] = useState<"testing" | "production">("testing");
+  // Token mode selection - NO DEFAULT, user must choose
+  const [tokenMode, setTokenMode] = useState<"testing" | "production" | "">("");
 
   // Pre-configured addresses from deployment
   const factoryAddress = "0xaF8aB08B63359cf8Ae8CFA9E1209CD96626fd55A";
@@ -26,7 +26,7 @@ export default function BeneficiaryPanel() {
     production: "0x01D32cDfAa2787c9729956bDaF8D378ebDC9aa12", // ConfidentialVestingToken (Full FHE)
   };
   
-  const tokenAddress = TOKEN_ADDRESSES[tokenMode];
+  const tokenAddress = tokenMode ? TOKEN_ADDRESSES[tokenMode] : "";
   
   // Vesting wallet address (discovered by user)
   const [vestingWalletAddress, setVestingWalletAddress] = useState("");
@@ -165,43 +165,59 @@ export default function BeneficiaryPanel() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Token Mode</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Token Mode <span className="text-red-500">*</span>
+            </label>
             <select
               value={tokenMode}
-              onChange={(e) => setTokenMode(e.target.value as "testing" | "production")}
-              className={inputClass + " cursor-pointer text-gray-900"}
+              onChange={(e) => setTokenMode(e.target.value as "testing" | "production" | "")}
+              className={inputClass + " cursor-pointer text-gray-900 " + (!tokenMode ? "text-gray-400" : "")}
             >
-              <option value="testing">🧪 Testing (SimpleMockToken - Easy minting)</option>
-              <option value="production">🔒 Production (Full FHE Encryption - Requires proof)</option>
+              <option value="" disabled>Choose testing or production token...</option>
+              <option value="testing">
+                🧪 Testing - SimpleMockToken (0x68A9...e33) - Easy minting, pre-approved
+              </option>
+              <option value="production">
+                🔒 Production - ConfidentialVestingToken (0x01D3...12) - Full FHE encryption
+              </option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {tokenMode === "testing" 
-                ? "Testing mode: Uses simple mock token for easy testing" 
-                : "Production mode: Uses full FHE encryption with proof generation"}
-            </p>
+            {tokenMode && (
+              <p className="text-xs text-gray-500 mt-1">
+                {tokenMode === "testing" 
+                  ? "✅ Testing mode: Simple mock token for easy testing - tokens already minted & approved!" 
+                  : "🔐 Production mode: Full FHE encryption with proof generation required"}
+              </p>
+            )}
+            {!tokenMode && (
+              <p className="text-xs text-red-500 mt-1">
+                ⚠️ Please select a token mode to continue
+              </p>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Token Address {tokenMode === "testing" ? "(SimpleMockToken)" : "(ConfidentialVestingToken)"}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                className={inputClass + " bg-gray-50 text-gray-900"}
-                value={tokenAddress}
-                readOnly
-              />
-              <a
-                href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm whitespace-nowrap"
-              >
-                View →
-              </a>
+          {tokenMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Token Address {tokenMode === "testing" ? "(SimpleMockToken)" : "(ConfidentialVestingToken)"}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className={inputClass + " bg-gray-50 text-gray-900 font-mono text-sm"}
+                  value={tokenAddress}
+                  readOnly
+                />
+                <a
+                  href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm whitespace-nowrap"
+                >
+                  View →
+                </a>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -277,7 +293,7 @@ export default function BeneficiaryPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={checkReleasable}
-                disabled={!vestingWalletAddress || !tokenAddress || isDecrypting}
+                disabled={!vestingWalletAddress || !tokenAddress || isDecrypting || !tokenMode}
                 className={secondaryButtonClass + " w-full"}
               >
                 {isDecrypting ? "⏳ Decrypting..." : "🔓 Check Releasable Amount"}
@@ -285,12 +301,17 @@ export default function BeneficiaryPanel() {
 
               <button
                 onClick={handleClaim}
-                disabled={!vestingWalletAddress || !tokenAddress || isProcessing || releasableAmount === BigInt(0)}
+                disabled={!vestingWalletAddress || !tokenAddress || isProcessing || releasableAmount === BigInt(0) || !tokenMode}
                 className={primaryButtonClass + " w-full"}
               >
                 {isProcessing ? "⏳ Processing..." : "🎉 Claim Tokens"}
               </button>
             </div>
+            {!tokenMode && (
+              <p className="text-xs text-red-500 mt-2 text-center">
+                ⚠️ Please select a token mode first
+              </p>
+            )}
           </div>
         </div>
       )}

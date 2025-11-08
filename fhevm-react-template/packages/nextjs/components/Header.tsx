@@ -27,7 +27,7 @@ export const Header = () => {
     <div className="sticky lg:static top-0 navbar min-h-0 shrink-0 justify-between z-20 px-0 sm:px-2 bg-white shadow-md">
       <div className="navbar-start">
         <Link href="/" className="text-xl font-bold text-gray-900 px-4">
-          🔐 FHE Vesting
+          🔐 FHEsting
         </Link>
       </div>
       

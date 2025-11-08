@@ -1,21 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useFhevm } from "@fhevm-sdk";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
 import { useCustomVestingFactory, type VestingSchedule } from "~~/hooks/vesting/useCustomVestingFactory";
+import { ethers } from "ethers";
 
 /**
  * Admin Panel for Creating and Funding Vesting Schedules
  * Allows admins to batch create encrypted vesting wallets for multiple beneficiaries
  */
 export default function AdminPanel() {
-  const { isConnected, chain } = useAccount();
+  const { isConnected, chain, address: userAddress } = useAccount();
   const chainId = chain?.id;
 
-  // Token mode selection
-  const [tokenMode, setTokenMode] = useState<"testing" | "production">("testing");
+  // Token mode selection - NO DEFAULT, user must choose
+  const [tokenMode, setTokenMode] = useState<"testing" | "production" | "">("");
+  const [tokenBalance, setTokenBalance] = useState<string>("");
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
 
   // Pre-configured addresses from deployment
   const factoryAddress = "0xaF8aB08B63359cf8Ae8CFA9E1209CD96626fd55A";
@@ -25,7 +31,7 @@ export default function AdminPanel() {
     production: "0x01D32cDfAa2787c9729956bDaF8D378ebDC9aa12", // ConfidentialVestingToken (Full FHE)
   };
   
-  const tokenAddress = TOKEN_ADDRESSES[tokenMode];
+  const tokenAddress = tokenMode ? TOKEN_ADDRESSES[tokenMode] : "";
 
   // Vesting schedules
   const [schedules, setSchedules] = useState<VestingSchedule[]>([
@@ -91,6 +97,103 @@ export default function AdminPanel() {
     setSchedules(newSchedules);
   };
 
+  // Check token balance when token mode changes
+  useEffect(() => {
+    const checkBalance = async () => {
+      if (!tokenAddress || !userAddress) {
+        setTokenBalance("");
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const tokenABI = ["function balanceOf(address) view returns (uint256)"];
+        const token = new ethers.Contract(tokenAddress, tokenABI, provider);
+        const balance = await token.balanceOf(userAddress);
+        setTokenBalance(ethers.formatEther(balance));
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+        setTokenBalance("Error");
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    checkBalance();
+  }, [tokenAddress, userAddress]);
+
+  // Check approval status when token changes
+  const checkApproval = async () => {
+    if (!tokenAddress || !userAddress) {
+      setIsApproved(false);
+      return;
+    }
+
+    setIsCheckingApproval(true);
+    try {
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const tokenABI = ["function isOperator(address account, address operator) view returns (bool)"];
+      const token = new ethers.Contract(tokenAddress, tokenABI, provider);
+      const approved = await token.isOperator(userAddress, factoryAddress);
+      setIsApproved(approved);
+    } catch (error) {
+      console.error("Error checking approval:", error);
+      setIsApproved(false);
+    } finally {
+      setIsCheckingApproval(false);
+    }
+  };
+
+  // Auto-check approval when token changes
+  useEffect(() => {
+    checkApproval();
+  }, [tokenAddress, userAddress]);
+
+  // Handle approval - triggers wallet signature
+  const handleApprove = async () => {
+    if (!tokenAddress || !userAddress) return;
+
+    setIsApproving(true);
+    try {
+      // Get signer to trigger wallet signature
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      
+      const tokenABI = [
+        "function setOperator(address operator, bool approved)",
+        "event OperatorSet(address indexed owner, address indexed operator, bool approved)"
+      ];
+      const token = new ethers.Contract(tokenAddress, tokenABI, signer);
+      
+      console.log("Requesting approval signature from wallet...");
+      
+      // This triggers the wallet signature popup
+      const tx = await token.setOperator(factoryAddress, true);
+      
+      console.log("Approval transaction sent:", tx.hash);
+      
+      // Wait for confirmation
+      const receipt = await tx.wait();
+      
+      console.log("Approval confirmed in block:", receipt.blockNumber);
+      
+      setIsApproved(true);
+      alert(`✅ Factory approved successfully!\n\nTransaction: ${tx.hash}`);
+    } catch (error: any) {
+      console.error("Error approving:", error);
+      
+      // Handle user rejection
+      if (error.code === 4001 || error.code === "ACTION_REJECTED") {
+        alert("❌ Approval cancelled by user");
+      } else {
+        alert(`❌ Approval failed: ${error.message || "Unknown error"}`);
+      }
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   // Submit the batch
   const handleSubmit = async () => {
     const validSchedules = schedules.filter(s => s.beneficiary && s.amount > 0);
@@ -117,6 +220,9 @@ export default function AdminPanel() {
 
   const dangerButtonClass =
     buttonClass + " bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 cursor-pointer";
+
+  const secondaryButtonClass =
+    buttonClass + " bg-gray-600 text-white hover:bg-gray-700 focus-visible:ring-gray-500 cursor-pointer";
 
   const inputClass =
     "w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#FFD208] focus:border-transparent text-gray-900 bg-white";
@@ -167,43 +273,125 @@ export default function AdminPanel() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Token Mode</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Token Mode <span className="text-red-500">*</span>
+            </label>
             <select
               value={tokenMode}
-              onChange={(e) => setTokenMode(e.target.value as "testing" | "production")}
-              className={inputClass + " cursor-pointer text-gray-900"}
+              onChange={(e) => setTokenMode(e.target.value as "testing" | "production" | "")}
+              className={inputClass + " cursor-pointer text-gray-900 " + (!tokenMode ? "text-gray-400" : "")}
             >
-              <option value="testing">🧪 Testing (SimpleMockToken - Easy minting)</option>
-              <option value="production">🔒 Production (Full FHE Encryption - Requires proof)</option>
+              <option value="" disabled>Choose testing or production token...</option>
+              <option value="testing">
+                🧪 Testing - SimpleMockToken (0x68A9...e33) - Easy minting, pre-approved
+              </option>
+              <option value="production">
+                🔒 Production - ConfidentialVestingToken (0x01D3...12) - Full FHE encryption
+              </option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {tokenMode === "testing" 
-                ? "Testing mode: Uses simple mock token for easy testing" 
-                : "Production mode: Uses full FHE encryption with proof generation"}
-            </p>
+            {tokenMode && (
+              <p className="text-xs text-gray-500 mt-1">
+                {tokenMode === "testing" 
+                  ? "✅ Testing mode: Simple mock token for easy testing - tokens already minted & approved!" 
+                  : "🔐 Production mode: Full FHE encryption with proof generation required"}
+              </p>
+            )}
+            {!tokenMode && (
+              <p className="text-xs text-red-500 mt-1">
+                ⚠️ Please select a token mode to continue
+              </p>
+            )}
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Token Address {tokenMode === "testing" ? "(SimpleMockToken)" : "(ConfidentialVestingToken)"}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                className={inputClass + " bg-gray-50 text-gray-900"}
-                value={tokenAddress}
-                readOnly
-              />
-              <a
-                href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm whitespace-nowrap"
-              >
-                View →
-              </a>
+          {tokenMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Token Address {tokenMode === "testing" ? "(SimpleMockToken)" : "(ConfidentialVestingToken)"}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className={inputClass + " bg-gray-50 text-gray-900 font-mono text-sm"}
+                  value={tokenAddress}
+                  readOnly
+                />
+                <a
+                  href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm whitespace-nowrap"
+                >
+                  View →
+                </a>
+              </div>
+              
+              {/* Token Balance Display */}
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                {isLoadingBalance ? (
+                  <p className="text-sm text-blue-700">⏳ Loading balance...</p>
+                ) : tokenBalance ? (
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      💰 Your Balance: {tokenBalance} tokens
+                    </p>
+                    {parseFloat(tokenBalance) === 0 && (
+                      <p className="text-xs text-red-600 mt-1">
+                        ⚠️ No tokens! <a 
+                          href={`https://sepolia.etherscan.io/address/${tokenAddress}#writeContract`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Mint tokens here
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              
+              {/* Approval Status & Button */}
+              <div className="mt-3 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-yellow-900">
+                      🔐 Factory Approval Status
+                    </p>
+                    {isCheckingApproval ? (
+                      <p className="text-xs text-yellow-700 mt-1">⏳ Checking approval status...</p>
+                    ) : isApproved ? (
+                      <p className="text-xs text-green-700 mt-1">✅ Approved - Factory can spend your tokens</p>
+                    ) : (
+                      <p className="text-xs text-yellow-700 mt-1">⚠️ Not approved - Click to approve first</p>
+                    )}
+                    <p className="text-xs text-yellow-600 mt-2">
+                      💡 The factory needs approval to transfer tokens when creating vesting schedules.
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {!isApproved && !isCheckingApproval && (
+                      <button
+                        onClick={handleApprove}
+                        disabled={isApproving || parseFloat(tokenBalance) === 0}
+                        className={primaryButtonClass + " whitespace-nowrap"}
+                      >
+                        {isApproving ? "⏳ Approving..." : "🔓 Approve Factory"}
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={checkApproval}
+                      disabled={isCheckingApproval}
+                      className={secondaryButtonClass + " whitespace-nowrap"}
+                    >
+                      {isCheckingApproval ? "⏳ Checking..." : "🔄 Refresh"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -260,7 +448,6 @@ export default function AdminPanel() {
                     value={schedule.cliffSeconds}
                     onChange={e => updateSchedule(index, "cliffSeconds", parseInt(e.target.value) || 0)}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Demo: 120 seconds = 2 minutes</p>
                 </div>
 
                 <div>
@@ -272,7 +459,6 @@ export default function AdminPanel() {
                     value={schedule.durationSeconds}
                     onChange={e => updateSchedule(index, "durationSeconds", parseInt(e.target.value) || 0)}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Demo: 300 seconds = 5 minutes</p>
                 </div>
               </div>
             </div>
@@ -282,11 +468,21 @@ export default function AdminPanel() {
         <div className="mt-6">
           <button
             onClick={handleSubmit}
-            disabled={isProcessing}
+            disabled={isProcessing || !tokenMode || !isApproved}
             className={primaryButtonClass + " w-full"}
           >
             {isProcessing ? "⏳ Processing..." : "🚀 Create & Fund Vesting Schedules"}
           </button>
+          {!tokenMode && (
+            <p className="text-xs text-red-500 mt-2 text-center">
+              ⚠️ Please select a token mode first
+            </p>
+          )}
+          {tokenMode && !isApproved && (
+            <p className="text-xs text-red-500 mt-2 text-center">
+              ⚠️ Please approve the factory first (see Configuration section above)
+            </p>
+          )}
         </div>
       </div>
 

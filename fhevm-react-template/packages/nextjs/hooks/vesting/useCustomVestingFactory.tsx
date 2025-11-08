@@ -44,11 +44,48 @@ export const useCustomVestingFactory = ({ factoryAddress, instance }: UseCustomV
         return;
       }
 
+      if (!tokenAddress || tokenAddress === "") {
+        setMessage("❌ Please select a token mode first");
+        return;
+      }
+
       try {
         setIsProcessing(true);
-        setMessage("🔄 Preparing encrypted vesting schedules...");
+        setMessage("🔄 Checking token approval...");
 
         const factory = new ethers.Contract(factoryAddress, CustomVestingFactoryABI, ethersSigner);
+        const userAddress = await ethersSigner.getAddress();
+
+        // Check token balance and approval
+        const tokenABI = [
+          "function isOperator(address account, address operator) view returns (bool)",
+          "function balanceOf(address account) view returns (uint256)",
+        ];
+        const token = new ethers.Contract(tokenAddress, tokenABI, ethersSigner);
+        
+        // Calculate total amount needed
+        const totalAmount = schedules.reduce((sum, s) => sum + s.amount, BigInt(0));
+        
+        // Check balance
+        const balance = await token.balanceOf(userAddress);
+        if (balance < totalAmount) {
+          setMessage(
+            `❌ Insufficient balance! You need ${totalAmount.toString()} tokens but only have ${balance.toString()}. ` +
+            `Please mint tokens at: https://sepolia.etherscan.io/address/${tokenAddress}#writeContract`
+          );
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Check approval (should be done via UI button now)
+        const isApproved = await token.isOperator(userAddress, factoryAddress);
+        if (!isApproved) {
+          setMessage("❌ Factory not approved! Please approve the factory first using the approval button above.");
+          setIsProcessing(false);
+          return;
+        }
+
+        setMessage("🔄 Preparing encrypted vesting schedules...");
 
         // Prepare encrypted schedules
         const encryptedSchedules = [];
