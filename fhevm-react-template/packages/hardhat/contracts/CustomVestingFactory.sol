@@ -16,7 +16,13 @@ import {IERC7984} from
  * @title CustomVestingFactory
  * @dev A factory contract for creating and batch-funding confidential vesting wallets with cliff periods.
  */
-contract CustomVestingFactory is VestingWalletConfidentialFactory {
+contract CustomVestingFactory is VestingWalletConfidentialFactory, SepoliaConfig {
+    /**
+     * @dev Constructor initializes the FHE coprocessor for Sepolia
+     */
+    constructor() {
+        FHE.setCoprocessor(ZamaConfig.getSepoliaConfig());
+    }
     /// @dev Structure for defining a vesting schedule for a beneficiary
     struct VestingSchedule {
         address beneficiary;          // Who receives the tokens

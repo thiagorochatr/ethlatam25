@@ -35,7 +35,7 @@ async function main() {
   
   // Auto-approve factory
   console.log("\n✅ Auto-approving factory...");
-  const factoryAddress = "0xaF8aB08B63359cf8Ae8CFA9E1209CD96626fd55A";
+  const factoryAddress = "0x52be5B1113098A3D198b5AAaC0caad0aB1D87703"; // Fixed factory with FHE coprocessor
   const approveTx = await token.setOperator(factoryAddress, true);
   await approveTx.wait();
   console.log("✅ Factory approved!");

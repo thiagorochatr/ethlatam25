@@ -92,9 +92,32 @@ export const useCustomVestingFactory = ({ factoryAddress, instance }: UseCustomV
 
         for (const schedule of schedules) {
           // Encrypt the amount using FHE
+          // NOTE: euint64 max is ~18 quintillion, which is only ~18 tokens in wei (18 decimals)
+          // So we store amounts as whole tokens, not wei
+          const amountInTokens = Number(schedule.amount); // User enters tokens, not wei
+          
+          console.log("🔍 Schedule being processed:", {
+            beneficiary: schedule.beneficiary,
+            amount: schedule.amount.toString(),
+            amountInTokens,
+            startTimestamp: schedule.startTimestamp,
+            durationSeconds: schedule.durationSeconds,
+            cliffSeconds: schedule.cliffSeconds,
+          });
+          
+          if (amountInTokens > 18_000_000_000) { // ~18 billion tokens max for euint64
+            throw new Error(`Amount ${amountInTokens} is too large for euint64. Max is ~18 billion tokens.`);
+          }
+          
           const encryptedAmount = await instance.createEncryptedInput(factoryAddress, await ethersSigner.getAddress());
-          encryptedAmount.add64(Number(schedule.amount));
+          encryptedAmount.add64(amountInTokens);
           const { handles, inputProof } = await encryptedAmount.encrypt();
+
+          console.log("🔐 FHE Encryption result:", {
+            handle: handles[0],
+            inputProofLength: inputProof.length,
+            inputProofType: typeof inputProof,
+          });
 
           encryptedSchedules.push({
             beneficiary: schedule.beneficiary,
@@ -106,6 +129,10 @@ export const useCustomVestingFactory = ({ factoryAddress, instance }: UseCustomV
 
           // We'll use the last inputProof (they should all be the same for batch)
           if (encryptedSchedules.length === schedules.length) {
+            console.log("📦 Final encrypted schedules:", encryptedSchedules);
+            console.log("📝 Token address:", tokenAddress);
+            console.log("🔑 Input proof:", inputProof);
+            
             setMessage("📝 Sending transaction to create and fund vesting wallets...");
 
             // Call the contract

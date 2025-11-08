@@ -173,7 +173,7 @@ export const VestingWalletABI = [
 
 export const VestingContracts = {
   factory: {
-    address: "0xaF8aB08B63359cf8Ae8CFA9E1209CD96626fd55A", // Deployed on Sepolia
+    address: "0x52be5B1113098A3D198b5AAaC0caad0aB1D87703", // Fixed: FHE coprocessor setup
     abi: CustomVestingFactoryABI,
     chainId: 11155111, // Sepolia
   },
